@@ -1,0 +1,246 @@
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import (
+    ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
+)
+import logging
+
+# Configure logging
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+CELESTIAL_INFO = {
+    'sun': "🌞 The Sun is the star at the center of the Solar System. It is a nearly perfect sphere of hot plasma, and it is the most important source of energy for life on Earth. ",
+    'moon': "🌕 The Moon is Earth's only natural satellite. It is the fifth-largest satellite in the Solar System and the largest among planetary satellites relative to the size of the planet that it orbits",
+    'mercury': "☿️ Mercury is the closest planet to the Sun. Its orbit around the Sun takes 87.97 days, the shortest of all the planets in the Solar System.",
+    'venus': "♀️ Venus is the second planet from the Sun.It is named after the Roman goddess of love and beauty. As the second-brightest natural object in the night sky after the Moon, Venus can cast shadows and is, on rare occasion, visible to the naked eye in broad daylight.",
+    'earth': "🌍 Earth is the third planet from the Sun.and the only astronomical object known to harbor life. About 71% of Earth's surface is covered with water, mostly by oceans.",
+    'mars': "♂️ Mars is the fourth planet from the Sun.and the second-smallest planet in the Solar System, being larger than only Mercury. In English, Mars carries the name of the Roman god of war and is often referred to as the 'Red Planet'🔴.",
+    'jupiter': "♃ Jupiter is the fifth planet from the Sun.and the largest in the Solar System. It is a gas giant with a mass one-thousandth that of the Sun but two and a half times that of all the other planets in the Solar System combined 🪐 .",
+    'saturn': "♄ Saturn is the sixth planet from the Sun.and the second-largest in the Solar System, after Jupiter. It is a gas giant with an average radius about nine times that of Earth.",
+    'uranus': "♅ Uranus is the seventh planet from the Sun. It has the third-largest planetary radius and fourth-largest planetary mass in the Solar System.",
+    'neptune': "♆ Neptune is the eighth planet and farthest-known planet from the Sun in the Solar System. It is the fourth-largest planet by diameter, the third-most-massive planet, and the densest giant planet 🔵 .",
+    'pluto': "♇ Pluto is a dwarf planet in the Kuiper belt, a ring of bodies beyond Neptune. It was the first Kuiper belt object to be discovered and is the largest known plutoid ❄️ .",
+    'ceres': "⚳ Ceres is the largest object in the asteroid belt that lies between Mars and Jupiter.It is the only dwarf planet within Neptune's orbit and is the smallest of the current category of dwarf planets 🌑 .",
+    'eris': "🚀 Eris is the most massive dwarf planet in the Solar System.It is the ninth-most-massive object directly orbiting the Sun.",
+    'haumea': "🌐 Haumea is a dwarf planet located beyond Neptune's orbit. it was discovered in 2004 by a teamheaded by Mike Brown.",
+    'makemake': "🌠 Makemake is a dwarf planet and perhaps the second largest Kuiper belt object.in the classical population, with a diameter that is about 60% that of Pluto.",
+}
+
+CONSTELLATION_INFO = {
+    'orion': "💫 Orion is a prominent constellation located on the celestial equator and visible throughout the world. It is one of the most conspicuous and recognizable constellations in the night sky.",
+    'ursa_major': "🐻 Ursa Major, also known as the Great Bear, is a constellation in the northern sky.It is one of the largest constellations and is best known for containing a group of seven bright stars called the Big Dipper.",
+    'cassiopeia': "👑 Cassiopeia is a constellation in the northern sky, named after the vain queen Cassiopeia in Greek mythology, who boasted about her unrivaled beauty.",
+    'cygnus': "🦢 Cygnus is a northern constellation lying on the plane of the Milky Way, deriving its name from the Latinized Greek word for swan. It is one of the most recognizable constellations of the northern summer and autumn. ",
+    'scorpius': "🦂 Scorpius is one of the constellations of the zodiac and is located in the southern celestial hemisphere. Its name is Latin for scorpion, and its symbol is ♏.",
+    'leo': "🦁 Leo is one of the constellations of the zodiac. Its ame is Latin for lion, and to the Greeks, the constellation represented he Nemean Lion killed by the mythical Greek hero Heralus.",
+    'taurus': "🐂 Taurus is a large and prominent constellation in the northern hemisphere's winter sky. Its name is Latin for bull, and it is symbolized by a bull's head.",
+    'gemini': "👯‍♂️ Gemini is one of the constellations of the zodiac, located in the northern celestial hemisphere. Its name is Latin for twins, and it is associated with the twin brothers Castor and Pollux in Greek mythology.",
+    'aquarius': "⚗️ Aquarius is a constellation of the zodiac, situated between Capricornus and Pisces. Its name is Latin for 'water-carrier' or 'cup-carrier' and its symbol is ♒.",
+    'pisces': "🐟 Pisces is a constellation of the zodiac, is located in the northern celestial hemisphere.Its name is Latin for fish, and its symbol is ♓.",
+}
+
+FUN_FACTS = {
+    'fun_sun': "🌞 The Sun's core is around 27 million degrees Fahrenheit!",
+    'fun_moon': "🌕 The Moon is drifting away from Earth at a rate of 1.5 inches per year!",
+    'fun_mercury': "A year on Mercury is just 88 days long!",
+    'fun_venus': "Venus spins in the opposite direction to most planets!",
+    'fun_earth': "🌍 Earth is the only planet known to support life!",
+    'fun_mars': "🔴 Mars has the tallest volcano in the solar system!",
+    'fun_jupiter': "🪐 Jupiter has a giant storm called the Great Red Spot!",
+    'fun_saturn': "Saturn has the most extensive ring system!",
+    'fun_uranus': "🌀 Uranus rotates on its side!",
+    'fun_neptune': "🔵 Neptune has supersonic winds!",
+    'fun_pluto': "Pluto was reclassified as a dwarf planet in 2006!",
+    'fun_ceres': "🌑 Ceres is the largest object in the asteroid belt and was the first asteroid discovered!",
+    'fun_eris': "🧊 Eris is named after the Greek goddess of discord and strife!",
+    'fun_haumea': "🌐 Haumea has a very fast rotation, completing a turn on its axis in less than four hours!",
+    'fun_makemake': "🔆 Makemake was discovered shortly after Easter, and is named after the Rapa Nui god of fertility!",
+}
+
+DISTANCES_FROM_EARTH = {
+    'sun': "The Sun is about 93 million miles (150 million kilometers) away from Earth.",
+    'moon': "The Moon is about 238,855 miles (384,400 kilometers) away from Earth.",
+    'mercury': "Mercury is about 48 million miles (77 million kilometers) away from Earth.",
+    'venus': "Venus is about 25 million miles (40 million kilometers) away from Earth.",
+    'mars': "Mars is about 140 million miles (225 million kilometers) away from Earth.",
+    'jupiter': "Jupiter is about 484 million miles (779 million kilometers) away from Earth.",
+    'saturn': "Saturn is about 890 million miles (1.4 billion kilometers) away from Earth.",
+    'uranus': "Uranus is about 1.8 billion miles (2.9 billion kilometers) away from Earth.",
+    'neptune': "Neptune is about 2.7 billion miles (4.3 billion kilometers) away from Earth.",
+    'pluto': "Pluto is about 3.7 billion miles (5.9 billion kilometers) away from Earth.",
+    'ceres': "Ceres is about 257 million miles (413 million kilometers) away from Earth.",
+    'eris': "Eris is about 8.6 billion miles (13.8 billion kilometers) away from Earth.",
+    'haumea': "Haumea is about 4.6 billion miles (7.4 billion kilometers) away from Earth.",
+    'makemake': "Makemake is about 4.3 billion miles (6.9 billion kilometers) away from Earth.",
+}
+
+user_names = {}
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "Hello! I'm Nova, a Space Bot. I can provide information about celestial bodies and constellations in our solar system. "
+        "Please tell me your name to get started."
+    )
+
+async def receive_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    user_name = update.message.text
+    user_names[user_id] = user_name
+    await update.message.reply_text(f"Nice to meet you, {user_name}! Use /menu to see available options.")
+
+async def menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    name = user_names.get(user_id, "there")
+    keyboard = [
+        [InlineKeyboardButton("Celestial Bodies", callback_data='celestial_bodies')],
+        [InlineKeyboardButton("Constellations", callback_data='constellations')],
+        [InlineKeyboardButton("Fun Facts", callback_data='funfacts')],
+        [InlineKeyboardButton("Distances", callback_data='distances')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text(f"What would you like to explore, {name}?", reply_markup=reply_markup)
+
+async def celestial_bodies_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = [
+        [InlineKeyboardButton("Sun", callback_data='sun')],
+        [InlineKeyboardButton("Moon", callback_data='moon')],
+        [InlineKeyboardButton("Mercury", callback_data='mercury')],
+        [InlineKeyboardButton("Venus", callback_data='venus')],
+        [InlineKeyboardButton("Earth", callback_data='earth')],
+        [InlineKeyboardButton("Mars", callback_data='mars')],
+        [InlineKeyboardButton("Jupiter", callback_data='jupiter')],
+        [InlineKeyboardButton("Saturn", callback_data='saturn')],
+        [InlineKeyboardButton("Uranus", callback_data='uranus')],
+        [InlineKeyboardButton("Neptune", callback_data='neptune')],
+        [InlineKeyboardButton("Pluto", callback_data='pluto')],
+        [InlineKeyboardButton("Ceres", callback_data='ceres')],
+        [InlineKeyboardButton("Eris", callback_data='eris')],
+        [InlineKeyboardButton("Haumea", callback_data='haumea')],
+        [InlineKeyboardButton("Makemake", callback_data='makemake')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.callback_query.message.reply_text("Choose a celestial body:", reply_markup=reply_markup)
+
+async def constellations_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = [
+        [InlineKeyboardButton("Orion", callback_data='orion')],
+        [InlineKeyboardButton("Ursa Major", callback_data='ursa_major')],
+        [InlineKeyboardButton("Cassiopeia", callback_data='cassiopeia')],
+        [InlineKeyboardButton("Cygnus", callback_data='cygnus')],
+        [InlineKeyboardButton("Scorpius", callback_data='scorpius')],
+        [InlineKeyboardButton("Leo", callback_data='leo')],
+        [InlineKeyboardButton("Taurus", callback_data='taurus')],
+        [InlineKeyboardButton("Gemini", callback_data='gemini')],
+        [InlineKeyboardButton("Aquarius", callback_data='aquarius')],
+        [InlineKeyboardButton("Pisces", callback_data='pisces')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.callback_query.message.reply_text("Choose a constellation:", reply_markup=reply_markup)
+
+async def funfacts_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = [
+        [InlineKeyboardButton("Sun", callback_data='fun_sun')],
+        [InlineKeyboardButton("Moon", callback_data='fun_moon')],
+        [InlineKeyboardButton("Mercury", callback_data='fun_mercury')],
+        [InlineKeyboardButton("Venus", callback_data='fun_venus')],
+        [InlineKeyboardButton("Earth", callback_data='fun_earth')],
+        [InlineKeyboardButton("Mars", callback_data='fun_mars')],
+        [InlineKeyboardButton("Jupiter", callback_data='fun_jupiter')],
+        [InlineKeyboardButton("Saturn", callback_data='fun_saturn')],
+        [InlineKeyboardButton("Uranus", callback_data='fun_uranus')],
+        [InlineKeyboardButton("Neptune", callback_data='fun_neptune')],
+        [InlineKeyboardButton("Pluto", callback_data='fun_pluto')],
+        [InlineKeyboardButton("Ceres", callback_data='fun_ceres')],
+        [InlineKeyboardButton("Eris", callback_data='fun_eris')],
+        [InlineKeyboardButton("Haumea", callback_data='fun_haumea')],
+        [InlineKeyboardButton("Makemake", callback_data='fun_makemake')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.callback_query.message.reply_text("Choose a fun fact:", reply_markup=reply_markup)
+
+async def distances_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = [
+        [InlineKeyboardButton("Sun", callback_data='distance_sun')],
+        [InlineKeyboardButton("Moon", callback_data='distance_moon')],
+        [InlineKeyboardButton("Mercury", callback_data='distance_mercury')],
+        [InlineKeyboardButton("Venus", callback_data='distance_venus')],
+        [InlineKeyboardButton("Earth", callback_data='distance_earth')],
+        [InlineKeyboardButton("Mars", callback_data='distance_mars')],
+        [InlineKeyboardButton("Jupiter", callback_data='distance_jupiter')],
+        [InlineKeyboardButton("Saturn", callback_data='distance_saturn')],
+        [InlineKeyboardButton("Uranus", callback_data='distance_uranus')],
+        [InlineKeyboardButton("Neptune", callback_data='distance_neptune')],
+        [InlineKeyboardButton("Pluto", callback_data='distance_pluto')],
+        [InlineKeyboardButton("Ceres", callback_data='distance_ceres')],
+        [InlineKeyboardButton("Eris", callback_data='distance_eris')],
+        [InlineKeyboardButton("Haumea", callback_data='distance_haumea')],
+        [InlineKeyboardButton("Makemake", callback_data='distance_makemake')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.callback_query.message.reply_text("Choose a celestial body to get its distance from Earth:", reply_markup=reply_markup)
+
+async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    data = query.data
+
+    if data in CELESTIAL_INFO:
+        await query.edit_message_text(CELESTIAL_INFO[data])
+    elif data in CONSTELLATION_INFO:
+        await query.edit_message_text(CONSTELLATION_INFO[data])
+    elif data in FUN_FACTS:
+        await query.edit_message_text(FUN_FACTS[data])
+    elif data.startswith('distance_'):
+        body = data.split('_')[1]
+        distance = DISTANCES_FROM_EARTH.get(body, "Distance information not available.")
+        await query.edit_message_text(distance)
+    elif data == 'celestial_bodies':
+        await celestial_bodies_menu(update, context)
+    elif data == 'constellations':
+        await constellations_menu(update, context)
+    elif data == 'funfacts':
+        await funfacts_menu(update, context)
+    elif data == 'distances':
+        await distances_menu(update, context)
+
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Use /start to start the bot. Use /menu to see available options.")
+
+async def info_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    name = user_names.get(user_id, "there")
+    body = ' '.join(context.args).lower()
+    info = CELESTIAL_INFO.get(body, "Information not found.")
+    await update.message.reply_text(info)
+
+async def distance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    name = user_names.get(user_id, "there")
+    body = ' '.join(context.args).lower()
+    distance = DISTANCES_FROM_EARTH.get(body, "Distance information not available.")
+    await update.message.reply_text(distance)
+
+async def thank_you_reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    name = user_names.get(user_id, "there")
+    await update.message.reply_text(f"You're welcome, {name}!")
+
+def main():
+    token = "7205284162:AAE9_lyBP_Yq7Jz0-3KTG5Ue-kOan_Or9Us"
+
+    application = ApplicationBuilder().token(token).build()
+
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("menu", menu))
+    application.add_handler(CommandHandler("funfact", funfacts_menu))
+    application.add_handler(CommandHandler("help", help_command))
+    application.add_handler(CommandHandler("info", info_command))
+    application.add_handler(CommandHandler("distance", distance_command))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, receive_name))
+    application.add_handler(MessageHandler(filters.Regex(r'(?i)thank you'), thank_you_reply))
+    application.add_handler(CallbackQueryHandler(button))
+
+    application.run_polling()
+
+if __name__ == '__main__':
+    main()
