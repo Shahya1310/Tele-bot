@@ -226,7 +226,7 @@ async def thank_you_reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"You're welcome, {name}!")
 
 def main():
-    token = "7205284162:AAE9_lyBP_Yq7Jz0-3KTG5Ue-kOan_Or9Us"
+    token = "Add your telegram token here"
 
     application = ApplicationBuilder().token(token).build()
 
